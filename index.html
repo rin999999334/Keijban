@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>掲示板 | Board</title>
+
+  <!-- デザインファイルを読み込む -->
+  <link rel="stylesheet" href="style/base.css" />
+  <link rel="stylesheet" href="style/board-modern.css" />
+</head>
+
+<body>
+
+  <!-- ヘッダー：アプリ全体のタイトルとナビゲーション -->
+  <header class="header">
+    <h1>掲示板</h1>
+    <nav>
+      <a href="profile.html">👤 アカウント</a>
+      <a href="login.html">ログイン</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 投稿フォーム -->
+    <section class="form-area">
+      <form id="postForm">
+        <!-- 投稿者名 -->
+        <input id="name" type="text" placeholder="Name" required />
+
+        <!-- 投稿タイトル -->
+        <input id="subject" type="text" placeholder="Subject" />
+
+        <!-- 投稿本文 -->
+        <textarea id="body" placeholder="本文を入力..." rows="5"></textarea>
+
+        <div class="form-actions">
+          <button type="submit">投稿</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 投稿一覧 -->
+    <section id="postsContainer" class="posts"></section>
+  </main>
+
+  <footer class="footer">
+    <p>© 掲示板2025</p>
+  </footer>
+
+  <!-- JavaScriptで機能を読み込む -->
+  <script src="script/auth.js"></script>
+  <script src="script/main.js"></script>
+</body>
+</html>

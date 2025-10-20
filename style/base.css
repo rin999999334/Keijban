@@ -1,0 +1,31 @@
+/* ==========================
+   全ページ共通の基本デザイン
+   ========================== */
+
+:root {
+  --accent: #2563eb;   /* アクセントカラー（青） */
+  --bg: #f9fafb;       /* 背景 */
+  --border: #e5e7eb;   /* 境界線 */
+  --shadow: rgba(0,0,0,0.08);
+}
+
+body {
+  font-family: "Noto Sans JP", sans-serif;
+  background: var(--bg);
+  color: #111;
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  cursor: pointer;
+}
