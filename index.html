@@ -2,54 +2,123 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>掲示板 | Board</title>
-
-  <!-- デザインファイルを読み込む -->
   <link rel="stylesheet" href="style/base.css" />
   <link rel="stylesheet" href="style/board-modern.css" />
+  <style>
+    /* 視覚的には非表示だがスクリーンリーダーで読ませたい見出し用 */
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0);
+      white-space: nowrap; border: 0;
+    }
+  </style>
 </head>
-
 <body>
+  <!-- ===== アクセスガード：未ログイン/未承認ならログインへ ===== -->
+  <script>
+    (function(){
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const me = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const approved = JSON.parse(localStorage.getItem('approvedUsers') || '[]');
+      const approvedOk = approved.some(u => u.email === me.email);
+      if (!isLoggedIn || !me.email || !approvedOk) {
+        location.href = 'login.html';
+      }
+    })();
+  </script>
 
-  <!-- ヘッダー：アプリ全体のタイトルとナビゲーション -->
-  <header class="header">
+  <!-- サイト全体のヘッダー（ナビ含む） -->
+  <header class="header" role="banner">
     <h1>掲示板</h1>
-    <nav>
-      <a href="profile.html">👤 アカウント</a>
-      <a href="login.html">ログイン</a>
+    <nav aria-label="アカウント関連">
+      <a id="profileLink" href="profile.html"></a>
+      <button id="logoutBtn" class="btn">ログアウト</button>
     </nav>
   </header>
 
-  <main>
-    <!-- 投稿フォーム -->
-    <section class="form-area">
-      <form id="postForm">
-        <!-- 投稿者名 -->
-        <input id="name" type="text" placeholder="Name" required />
+  <!-- メイン領域：投稿フォーム + 投稿一覧 -->
+  <main id="main" role="main">
+    <!-- 投稿フォームエリア -->
+    <section id="post-section" class="form-area" aria-labelledby="post-section-title">
+      <h2 id="post-section-title" class="visually-hidden">新規投稿フォーム</h2>
 
-        <!-- 投稿タイトル -->
-        <input id="subject" type="text" placeholder="Subject" />
+      <!-- ※ JS（main.js）がこのIDを使ってハンドリングします -->
+      <form id="postForm" aria-describedby="post-form-desc">
+        <p id="post-form-desc" class="visually-hidden">名前、題名、本文を入力して投稿できます。</p>
 
-        <!-- 投稿本文 -->
-        <textarea id="body" placeholder="本文を入力..." rows="5"></textarea>
+        <label for="name" class="visually-hidden">名前</label>
+        <input id="name" name="name" type="text" placeholder="Name" autocomplete="nickname" required />
+
+        <label for="subject" class="visually-hidden">題名</label>
+        <input id="subject" name="subject" type="text" placeholder="Subject" autocomplete="off" />
+
+        <label for="body" class="visually-hidden">本文</label>
+        <textarea id="body" name="body" placeholder="本文を入力..." rows="5" aria-multiline="true"></textarea>
 
         <div class="form-actions">
-          <button type="submit">投稿</button>
+          <button type="submit" aria-label="投稿する">投稿</button>
         </div>
       </form>
     </section>
 
-    <!-- 投稿一覧 -->
-    <section id="postsContainer" class="posts"></section>
+    <!-- 投稿一覧エリア -->
+    <section id="posts-section" class="posts" aria-labelledby="posts-section-title">
+      <h2 id="posts-section-title" class="visually-hidden">投稿一覧</h2>
+      <!-- JS がここへレンダリングします -->
+      <div id="postsContainer"></div>
+    </section>
   </main>
 
-  <footer class="footer">
-    <p>© 掲示板2025</p>
+  <!-- フッター：バージョンなど任意の情報を置くと運用時に便利 -->
+  <footer class="footer" role="contentinfo">
+    <p>© 掲示板2025 | Ver 0.9 Beta</p>
   </footer>
 
-  <!-- JavaScriptで機能を読み込む -->
-  <script src="script/auth.js"></script>
-  <script src="script/main.js"></script>
+  <!-- JS：defer で描画ブロック回避。auth→main の順（依存の都合） -->
+  <script defer src="script/auth.js"></script>
+  <script defer src="script/main.js"></script>
+
+  <!-- ヘッダーのプロフィール表示/ログアウト制御（DOM生成後に実行） -->
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const me = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const a = document.getElementById('profileLink');
+    const out = document.getElementById('logoutBtn');
+
+    if (!a || !out) return;
+
+    // ログイン中ユーザーが存在する場合の表示
+    if (me && me.name) {
+      a.textContent = `👤 ${me.name}（ログイン中）`;
+      a.href = 'profile.html';
+      out.style.display = '';
+    } else {
+      // 未ログイン時の表示
+      a.textContent = 'ログイン';
+      a.href = 'login.html';
+      out.style.display = 'none';
+    }
+
+    // ログアウトボタン動作
+    out.addEventListener('click', () => {
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('currentUser');
+      location.href = 'login.html';
+    });
+
+    // 投稿フォームの自動補完
+    const nameInput = document.getElementById('name');
+    if (nameInput && me && me.name) {
+      nameInput.value = me.name;
+    }
+  });
+  </script>
+
+  <!-- JSが無効な環境でのガード -->
+  <noscript>このアプリを利用するにはJavaScriptを有効にしてください。</noscript>
 </body>
 </html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <script>
+  // --- 管理者権限チェック ---
+  (function(){
+    const current = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const approved = JSON.parse(localStorage.getItem("approvedUsers") || "[]");
+    const adminEmail = "admin@example.com"; // 管理者アカウント（任意変更可）
+
+    const isAdmin = approved.some(u => u.email === adminEmail) && current.email === adminEmail;
+
+    if (!isAdmin) {
+      alert("管理者権限が必要です。");
+      location.href = "index.html";
+    }
+  })();
+</script>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>管理者承認 | 掲示板</title>
+  <link rel="stylesheet" href="style/base.css" />
+  <link rel="stylesheet" href="style/board-modern.css" />
+  <style>
+    main { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .admin-card { background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,.1); padding:16px; }
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .toolbar .left { display:flex; gap:8px; align-items:center; }
+    .search { max-width:280px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding:10px; border-bottom:1px solid var(--border); text-align:left; }
+    th { font-weight:600; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#1e3a8a; font-size:.8rem; }
+    .btn { padding:8px 10px; border-radius:6px; border:1px solid var(--border); background:#fff; cursor:pointer; transition:transform .1s ease, box-shadow .15s ease; }
+    .btn:hover { transform: translateY(-1px); box-shadow:0 2px 5px rgba(0,0,0,.12);}
+    .btn:active { transform: translateY(1px);}
+    .btn.approve { background: var(--accent); color:#fff; border:none; }
+    .btn.reject { background: #fff; color:#b91c1c; border:1px solid #fecaca; }
+    .empty { color:#666; padding:24px 8px; text-align:center; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>管理者承認</h1>
+    <nav>
+      <a href="index.html">🏠 掲示板</a>
+      <a href="login.html">ログイン</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="admin-card">
+      <div class="toolbar">
+        <div class="left">
+          <span class="badge">承認待ち一覧</span>
+          <button class="btn" id="reloadBtn">🔄 再読み込み</button>
+          <button class="btn approve" id="approveAllBtn">✓ すべて承認</button>
+        </div>
+        <input type="search" id="search" class="search" placeholder="名前 / メールで検索" />
+      </div>
+
+      <table aria-label="承認待ちユーザー">
+        <thead>
+          <tr>
+            <th>名前</th>
+            <th>メール</th>
+            <th>申請日時</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="pendingTbody"></tbody>
+      </table>
+      <div id="emptyState" class="empty" style="display:none;">承認待ちはありません</div>
+    </div>
+  </main>
+
+  <script>
+    // ===============================
+    // admin.html 内部スクリプト
+    // 目的: 承認待ちユーザーの一覧/承認/却下（ローカル擬似）
+    // ===============================
+
+    const tbody = document.getElementById('pendingTbody');
+    const emptyState = document.getElementById('emptyState');
+    const search = document.getElementById('search');
+
+    function loadPending() {
+      const raw = localStorage.getItem('pendingUsers');
+      try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+    }
+    function savePending(arr){ localStorage.setItem('pendingUsers', JSON.stringify(arr)); }
+
+    function loadApproved(){
+      const raw = localStorage.getItem('approvedUsers');
+      try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+    }
+    function saveApproved(arr){ localStorage.setItem('approvedUsers', JSON.stringify(arr)); }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    function render(list){
+      tbody.innerHTML = '';
+      if (!list.length){
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+      tbody.innerHTML = list.map(u => `
+        <tr>
+          <td>${escapeHtml(u.name)}</td>
+          <td>${escapeHtml(u.email)}</td>
+          <td>${new Date(u.createdAt).toLocaleString()}</td>
+          <td>
+            <button class="btn approve" data-act="approve" data-email="${encodeURIComponent(u.email)}">承認</button>
+            <button class="btn reject" data-act="reject" data-email="${encodeURIComponent(u.email)}">却下</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    function refresh(){
+      const q = search.value.trim().toLowerCase();
+      const list = loadPending().filter(u => {
+        if (!q) return true;
+        return (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q);
+      });
+      render(list);
+    }
+
+    // 個別承認/却下
+    document.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const act = btn.dataset.act;
+      const email = decodeURIComponent(btn.dataset.email);
+      let pending = loadPending();
+      const idx = pending.findIndex(u => u.email === email);
+      if (idx === -1) { alert('対象が見つかりません'); return; }
+      const user = pending[idx];
+
+      if (act === 'approve'){
+        const approved = loadApproved();
+        approved.push({ name:user.name, email:user.email, password:user.password, approvedAt:new Date().toISOString() });
+        saveApproved(approved);
+
+        // 互換：従来の login.html 向け（単一ユーザー保存）
+        localStorage.setItem('userProfile', JSON.stringify({ name:user.name, email:user.email, password:user.password }));
+
+        pending.splice(idx,1);
+        savePending(pending);
+        alert(`承認しました: ${user.name}`);
+        refresh();
+
+      } else if (act === 'reject'){
+        if (!confirm(`却下しますか？\n${user.name} <${user.email}>`)) return;
+        pending.splice(idx,1);
+        savePending(pending);
+        refresh();
+      }
+    });
+
+    // 検索/再読み込み/一括承認
+    document.getElementById('reloadBtn').addEventListener('click', refresh);
+    search.addEventListener('input', refresh);
+
+    document.getElementById('approveAllBtn').addEventListener('click', () => {
+      const pending = loadPending();
+      if (!pending.length) return alert('承認待ちはありません');
+      if (!confirm(`全${pending.length}件を承認しますか？`)) return;
+
+      const approved = loadApproved();
+      pending.forEach(user => {
+        approved.push({ name:user.name, email:user.email, password:user.password, approvedAt:new Date().toISOString() });
+      });
+      saveApproved(approved);
+
+      // 互換：最後の1件を userProfile にも保存
+      const last = pending[pending.length-1];
+      if (last) localStorage.setItem('userProfile', JSON.stringify({ name:last.name, email:last.email, password:last.password }));
+
+      savePending([]);
+      refresh();
+      alert('すべて承認しました');
+    });
+
+    // 初期表示
+    refresh();
+  </script>
+</body>
+</html>

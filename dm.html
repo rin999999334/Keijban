@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DM一覧 | 掲示板</title>
+  <link rel="stylesheet" href="style/board-modern.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>ダイレクトメッセージ</h1>
+  </header>
+
+  <main>
+    <ul id="dmList" class="dm-list"></ul>
+  </main>
+
+  <script>
+    const me = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const users = JSON.parse(localStorage.getItem('approvedUsers') || '[]');
+    const list = document.getElementById('dmList');
+
+    if (!me.email) {
+      alert('ログインが必要です');
+      location.href = 'login.html';
+    }
+
+    const others = users.filter(u => u.email !== me.email);
+    if (others.length === 0) {
+      list.innerHTML = '<li>他のユーザーがいません。</li>';
+    } else {
+      others.forEach(u => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a href=\"dm-chat.html?to=${encodeURIComponent(u.email)}\">💬 ${u.name}</a>`;
+        list.appendChild(li);
+      });
+    }
+  </script>
+
+  <style>
+    .dm-list {
+      list-style: none;
+      padding: 0;
+      margin: 16px;
+    }
+    .dm-list li {
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
+    }
+    .dm-list a {
+      text-decoration: none;
+      color: var(--accent);
+      font-size: 1rem;
+    }
+    .dm-list a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</body>
+</html>

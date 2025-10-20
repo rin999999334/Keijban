@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン | 掲示板</title>
+  <link rel="stylesheet" href="style/base.css">
+  <link rel="stylesheet" href="style/board-modern.css">
+  <style>
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 80vh;
+    }
+    .login-box {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 360px;
+    }
+    .login-box h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .login-box input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    .login-box button {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.15s ease;
+    }
+    .login-box button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    }
+    .login-box button:active {
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+    .login-box a {
+      display: block;
+      text-align: center;
+      margin-top: 10px;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .login-box a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>ログイン</h1>
+  </header>
+
+  <main>
+    <div class="login-box">
+      <h1>掲示板ログイン</h1>
+      <form id="loginForm">
+        <input type="text" id="username" placeholder="ユーザー名またはメールアドレス" required />
+        <input type="password" id="password" placeholder="パスワード" required />
+        <button type="submit">ログイン</button>
+      </form>
+      <a href="register.html">新規登録はこちら</a>
+    </div>
+  </main>
+
+ <script>
+  // --- ログイン処理（承認制対応） ---
+  (function () {
+    const form = document.getElementById('loginForm');
+    if (!form) return; // フォームが無い場合は何もしない
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const userInput = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value.trim();
+
+      if (!userInput || !pass) {
+        alert('ユーザー名とパスワードを入力してください');
+        return;
+      }
+
+      // 保存データの取得
+      const approved = JSON.parse(localStorage.getItem('approvedUsers') || '[]');
+      const pending  = JSON.parse(localStorage.getItem('pendingUsers')  || '[]');
+      const legacy   = JSON.parse(localStorage.getItem('userProfile')   || '{}'); // 後方互換（任意）
+
+      const toLower = (s) => String(s || '').toLowerCase();
+      const uLower  = toLower(userInput);
+
+      // 1) まず pending をチェック（承認待ちはログインさせない）
+      const pendHit = pending.find(u => (toLower(u.email) === uLower || toLower(u.name) === uLower));
+      if (pendHit) {
+        // パスワードが一致していても承認まではログイン不可
+        if (pendHit.password === pass) {
+          alert('現在、運営の承認待ちです。承認完了後にログインできます。');
+          return;
+        }
+        // パス不一致の場合も同様に弾く
+      }
+
+      // 2) 承認済みから検索（メール or 名前一致 かつ パス一致）
+      let hit = approved.find(u => (
+        (toLower(u.email) === uLower || toLower(u.name) === uLower) && u.password === pass
+      ));
+
+      // 3) 後方互換（任意）：単一 userProfile を許可するかどうか
+      //   本番で承認制を厳格にするなら、この分岐を削除/コメントアウトしてください。
+      if (!hit && legacy && (
+        (toLower(legacy.email) === uLower || toLower(legacy.name) === uLower) && legacy.password === pass
+      )) {
+        hit = legacy;
+      }
+
+      if (hit) {
+        alert('ログイン成功');
+        localStorage.setItem('isLoggedIn', 'true');
+        // 現在ログインユーザー情報（ヘッダー表示・投稿名前の自動補完用）
+        localStorage.setItem('currentUser', JSON.stringify({
+          name: hit.name,
+          email: hit.email,
+          loginAt: new Date().toISOString()
+        }));
+        window.location.href = 'index.html';
+      } else {
+        alert('ユーザー名/メールまたはパスワードが間違っています');
+      }
+    });
+  })();
+</script>
+</body>
+</html>

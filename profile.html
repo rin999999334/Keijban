@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>プロフィール編集 | 掲示板</title>
+  <link rel="stylesheet" href="style/account-modern.css" />
+</head>
+<body>
+  <main class="account-card">
+    <h1>プロフィール編集</h1>
+    <form id="profileForm">
+      <label>ユーザー名</label>
+      <input id="name" type="text" required />
+
+      <label>メールアドレス（変更不可）</label>
+      <input id="email" type="email" disabled />
+
+      <button type="submit">変更を保存</button>
+    </form>
+
+    <button id="logoutBtn">ログアウト</button>
+  </main>
+
+  <script>
+    const me = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const approved = JSON.parse(localStorage.getItem('approvedUsers') || '[]');
+    const nameEl = document.getElementById('name');
+    const emailEl = document.getElementById('email');
+
+    if (!me.email) {
+      alert('ログインが必要です');
+      location.href = 'login.html';
+    } else {
+      nameEl.value = me.name || '';
+      emailEl.value = me.email;
+    }
+
+    document.getElementById('profileForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const newName = nameEl.value.trim();
+      if (!newName) return alert('名前を入力してください');
+
+      // currentUser 更新
+      me.name = newName;
+      localStorage.setItem('currentUser', JSON.stringify(me));
+
+      // approvedUsers 内も更新
+      const updated = approved.map(u =>
+        u.email === me.email ? { ...u, name: newName } : u
+      );
+      localStorage.setItem('approvedUsers', JSON.stringify(updated));
+
+      alert('プロフィールを更新しました');
+      location.href = 'index.html';
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('currentUser');
+      location.href = 'login.html';
+    });
+  </script>
+</body>
+</html>

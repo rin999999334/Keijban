@@ -1,5 +1,17 @@
 /* 掲示板ページ専用デザイン */
 
+/* --- global sizing reset to avoid 100%+padding overflow --- */
+*, *::before, *::after { box-sizing: border-box; }
+img, video, iframe { max-width: 100%; height: auto; display: block; }
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden; /* ← はみ出し防止 */
+  margin: 0;
+  padding: 0;
+}
+
 .header {
   display: flex;
   justify-content: space-between;
@@ -7,12 +19,16 @@
   padding: 14px 16px;
   background: #fff;
   border-bottom: 1px solid var(--border);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 main {
   padding: 16px;
+  margin: 0 auto;
+  width: 100%;
   max-width: 700px;
-  margin: auto;
+  box-sizing: border-box;
 }
 
 .form-area form {
@@ -22,6 +38,8 @@ main {
   padding: 16px;
   box-shadow: 0 4px 8px var(--shadow);
   margin-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 input, textarea {
@@ -31,6 +49,7 @@ input, textarea {
   padding: 10px;
   margin-bottom: 10px;
   font-size: 1rem;
+  box-sizing: border-box;
 }
 
 button {
@@ -49,10 +68,128 @@ button {
   padding: 14px;
   margin-bottom: 12px;
   box-shadow: 0 4px 6px var(--shadow);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .meta {
   font-size: 0.85rem;
   color: #666;
   margin-bottom: 6px;
+}
+
+/* ====== 柔軟なフォームレイアウト ====== */
+textarea {
+  resize: none; /* 手動リサイズを無効化（自動調整に任せる） */
+  overflow-y: hidden;
+  transition: height 0.2s ease;
+}
+
+/* ====== 返信フォーム ====== */
+.reply-form {
+  background: #f9fafb;
+  border-left: 3px solid var(--accent);
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.reply-form input,
+.reply-form textarea {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.reply-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.replies {
+  margin-top: 10px;
+  padding-left: 10px;
+  border-left: 2px solid #ddd;
+}
+
+.reply {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  box-shadow: 0 2px 4px var(--shadow);
+}
+
+/* Long text safety to avoid horizontal scroll */
+.posts, .post, .reply { overflow-wrap: anywhere; word-break: break-word; }
+
+/* ====== ホバー・クリック時の操作感演出 ====== */
+/* 全ボタン共通：ふんわり浮く感じ */
+button {
+  transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+}
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1) inset;
+}
+
+/* 入力欄クリック時（フォーカス時） */
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 4px var(--accent);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* 投稿カード（hoverで軽く反応） */
+.post, .reply {
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.post:hover, .reply:hover {
+  transform: scale(1.01);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+/* 更新ボタンにも同じ効果 */
+.refresh-btn {
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+.refresh-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.refresh-btn:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* ====== DMメッセージ表示 ====== */
+.mymsg {
+  background: #e6f3ff;
+  text-align: right;
+}
+.theirmsg {
+  background: #fff8e1;
+}
+#dmMessages .post {
+  border-radius: 8px;
+  margin: 8px 0;
+  padding: 10px;
+}
+
+/* ====== スマホ対応（モバイルだけを内包） ====== */
+@media (max-width: 600px) {
+  main { padding: 12px; }
+  .form-area form,
+  .post { border-radius: 0; box-shadow: none; }
 }

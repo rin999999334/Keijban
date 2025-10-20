@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>新規登録 | 掲示板</title>
+  <!-- 既存スタイルを流用してトーン統一 -->
+  <link rel="stylesheet" href="style/base.css" />
+  <link rel="stylesheet" href="style/board-modern.css" />
+  <style>
+    /* ページ固有の軽いレイアウト（共通トーンは既存CSSに依存） */
+    main {
+      min-height: 80vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .reg-card {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      padding: 20px 18px;
+    }
+    .reg-card h1 { text-align:center; margin: 4px 0 16px; }
+    .step { display: none; }
+    .step.active { display: block; }
+    .hint { font-size: .85rem; color: #666; margin: 4px 0 10px; }
+    .actions { display:flex; gap:8px; justify-content: flex-end; }
+    .actions .secondary { background:#fff; color: var(--accent); border:1px solid var(--accent); }
+    .actions button { flex: 1; }
+    .form-row { margin-bottom: 10px; }
+    label { display:block; font-size:.9rem; margin-bottom:4px; }
+    input, textarea { width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; font-size:1rem; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>新規登録</h1>
+    <nav><a href="login.html">ログインに戻る</a></nav>
+  </header>
+
+  <main>
+    <div class="reg-card" aria-live="polite">
+      <h1>アカウント作成</h1>
+      <!--
+        3ステップ構成：
+        STEP1: メール入力 → 認証コード送信（今回はローカルで擬似生成）
+        STEP2: 認証コード確認
+        STEP3: ユーザー名・パスワード設定 → 保存（localStorage）
+      -->
+
+      <!-- STEP 1: メール入力 -->
+      <section id="step1" class="step active" aria-labelledby="s1-title">
+        <h2 id="s1-title" class="visually-hidden">メール入力</h2>
+        <div class="form-row">
+          <label for="regEmail">メールアドレス</label>
+          <input id="regEmail" type="email" placeholder="you@example.com" autocomplete="email" required />
+        </div>
+        <p class="hint">入力したメール宛に認証コードを送信します（今回はテスト用に画面表示します）。</p>
+        <div class="actions">
+          <button id="sendCodeBtn" type="button">認証コードを送信</button>
+        </div>
+      </section>
+
+      <!-- STEP 2: 認証コード入力 -->
+      <section id="step2" class="step" aria-labelledby="s2-title">
+        <h2 id="s2-title" class="visually-hidden">認証コード確認</h2>
+        <div class="form-row">
+          <label for="regCode">認証コード</label>
+          <input id="regCode" type="text" inputmode="numeric" placeholder="6桁のコード" required />
+        </div>
+        <p id="testCodeMsg" class="hint"></p>
+        <div class="actions">
+          <button id="backToStep1" type="button" class="secondary">戻る</button>
+          <button id="verifyCodeBtn" type="button">確認</button>
+        </div>
+      </section>
+
+      <!-- STEP 3: ユーザー名・パスワード設定 -->
+      <section id="step3" class="step" aria-labelledby="s3-title">
+        <h2 id="s3-title" class="visually-hidden">ユーザー名・パスワード設定</h2>
+        <div class="form-row">
+          <label for="regName">ユーザー名</label>
+          <input id="regName" type="text" placeholder="りん" required />
+        </div>
+        <div class="form-row">
+          <label for="regPass">パスワード</label>
+          <input id="regPass" type="password" placeholder="8文字以上" required />
+        </div>
+        <div class="form-row">
+          <label for="regPass2">パスワード（確認）</label>
+          <input id="regPass2" type="password" placeholder="もう一度入力" required />
+        </div>
+        <div class="actions">
+          <button id="backToStep2" type="button" class="secondary">戻る</button>
+          <button id="completeBtn" type="button">登録してログイン</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // ===============================
+    // register.html 内部スクリプト（運営承認フロー対応）
+    // ===============================
+
+    // DOM取得
+    const s1 = document.getElementById('step1');
+    const s2 = document.getElementById('step2');
+    const s3 = document.getElementById('step3');
+
+    const emailEl = document.getElementById('regEmail');
+    const codeEl  = document.getElementById('regCode');
+    const nameEl  = document.getElementById('regName');
+    const passEl  = document.getElementById('regPass');
+    const pass2El = document.getElementById('regPass2');
+
+    const sendCodeBtn   = document.getElementById('sendCodeBtn');
+    const verifyCodeBtn = document.getElementById('verifyCodeBtn');
+    const backToStep1   = document.getElementById('backToStep1');
+    const backToStep2   = document.getElementById('backToStep2');
+    const completeBtn   = document.getElementById('completeBtn');
+    const testCodeMsg   = document.getElementById('testCodeMsg');
+
+    let generatedCode = null;
+    let savedEmail = '';
+
+    // ===== Utility =====
+    const isBlank = (s) => !s || !String(s).trim();
+    const maxLen  = (s, n) => String(s).length <= n;
+    const go = (step) => { [s1,s2,s3].forEach(sec => sec.classList.remove('active')); step.classList.add('active'); };
+
+    // STEP1: 認証コード送信
+    sendCodeBtn.addEventListener('click', () => {
+      const email = emailEl.value.trim();
+      if (isBlank(email)) return alert('メールアドレスを入力してください');
+      generatedCode = Math.floor(100000 + Math.random() * 900000);
+      savedEmail = email;
+      testCodeMsg.textContent = `テスト用コード: ${generatedCode}`;
+      go(s2);
+    });
+
+    // STEP2: コード確認
+    verifyCodeBtn.addEventListener('click', () => {
+      const input = codeEl.value.trim();
+      if (isBlank(input)) return alert('認証コードを入力してください');
+      if (String(input) !== String(generatedCode)) return alert('認証コードが違います');
+      go(s3);
+    });
+
+    // 戻るボタン
+    backToStep1.addEventListener('click', () => go(s1));
+    backToStep2.addEventListener('click', () => go(s2));
+
+    // STEP3: 申請保存（運営承認待ち）
+    completeBtn.addEventListener('click', () => {
+      const name = nameEl.value.trim();
+      const p1 = passEl.value.trim();
+      const p2 = pass2El.value.trim();
+
+      if (isBlank(name)) return alert('ユーザー名を入力してください');
+      if (!maxLen(name, 40)) return alert('ユーザー名は40文字以内です');
+      if (p1.length < 8) return alert('パスワードは8文字以上にしてください');
+      if (p1 !== p2) return alert('パスワードが一致しません');
+
+      // 申請情報を保存（承認待ちリスト）
+      const pendingUser = {
+        name,
+        email: savedEmail,
+        password: p1,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+
+      let pending = JSON.parse(localStorage.getItem('pendingUsers') || '[]');
+      pending.push(pendingUser);
+      localStorage.setItem('pendingUsers', JSON.stringify(pending));
+
+      alert('登録申請を受け付けました。運営の承認をお待ちください。');
+      // 将来的にはここでメール通知 or 管理者ダッシュボード連携
+      window.location.href = 'login.html';
+    });
+
+    // --- 運営側で承認する仕組み（テスト用関数） ---
+    // 実際には別管理画面やAPI経由で承認処理を実装
+    window.adminApproveUser = function(email) {
+      let pending = JSON.parse(localStorage.getItem('pendingUsers') || '[]');
+      const user = pending.find(u => u.email === email);
+      if (!user) return alert('該当ユーザーが見つかりません');
+
+      localStorage.setItem('userProfile', JSON.stringify({
+        name: user.name,
+        email: user.email,
+        password: user.password,
+        approvedAt: new Date().toISOString()
+      }));
+      pending = pending.filter(u => u.email !== email);
+      localStorage.setItem('pendingUsers', JSON.stringify(pending));
+
+      alert(`ユーザー「${user.name}」を承認しました`);
+    };
+  </script>
+</body>
+</html>
+
+<script src="script/register.js"></script>
